@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Filter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #141416;
+            --bg-tertiary: #1c1c1f;
+            --bg-hover: #242428;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1a6;
+            --text-tertiary: #6e6e73;
+            --accent-matrix: #00ff41;
+            --accent-waking: #a855f7;
+            --accent-archer: #dc2626;
+            --border-color: #2c2c30;
+            --border-subtle: #222225;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Canvas Container */
+        #container {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-primary);
+        }
+
+        #video {
+            display: none;
+        }
+
+        #mainCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Start Screen */
+        #startScreen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            z-index: 1000;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        #startScreen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .start-content {
+            text-align: center;
+            max-width: 480px;
+            padding: 0 24px;
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 56px;
+            font-weight: 700;
+            letter-spacing: -2px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 0%, #a1a1a6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+            font-weight: 400;
+        }
+
+        .start-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--bg-primary);
+            background: var(--text-primary);
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            font-family: inherit;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .start-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Filter Selector Bar */
+        #filterBar {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            padding: 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-normal);
+        }
+
+        #filterBar.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .filter-btn {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-family: inherit;
+        }
+
+        .filter-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .filter-btn.active {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        .filter-btn .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: all var(--transition-fast);
+        }
+
+        .filter-btn[data-filter="matrix"] .dot { background: var(--accent-matrix); }
+        .filter-btn[data-filter="wakingLife"] .dot { background: var(--accent-waking); }
+        .filter-btn[data-filter="archer"] .dot { background: var(--accent-archer); }
+
+        /* Settings Panel */
+        #settingsPanel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 120px);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(20px);
+            transition: all var(--transition-normal);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #settingsPanel.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .close-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .close-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .panel-content {
+            padding: 16px 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .control-section {
+            display: none;
+        }
+
+        .control-section.active {
+            display: block;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .control-label span {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .control-value {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Custom Range Slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--text-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--text-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Camera Select */
+        .camera-select {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 13px;
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            margin-bottom: 20px;
+        }
+
+        .camera-select:focus {
+            outline: none;
+            border-color: var(--text-tertiary);
+        }
+
+        /* Toggle Button */
+        #settingsToggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-normal);
+        }
+
+        #settingsToggle.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #settingsToggle:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        #settingsToggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Fullscreen Button */
+        #fullscreenBtn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-normal);
+        }
+
+        #fullscreenBtn.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #fullscreenBtn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        #fullscreenBtn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Accent colors per mode */
+        body[data-mode="matrix"] {
+            --accent-current: var(--accent-matrix);
+        }
+
+        body[data-mode="wakingLife"] {
+            --accent-current: var(--accent-waking);
+        }
+
+        body[data-mode="archer"] {
+            --accent-current: var(--accent-archer);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            background: var(--accent-current, var(--text-primary));
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #settingsPanel {
+                top: auto;
+                bottom: 100px;
+                right: 10px;
+                left: 10px;
+                width: auto;
+                max-height: 50vh;
+            }
+
+            #filterBar {
+                bottom: 20px;
+                left: 10px;
+                right: 10px;
+                transform: none;
+                justify-content: center;
+            }
+
+            .filter-btn {
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+
+            .filter-btn span:not(.dot) {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body data-mode="matrix">
+    <!-- Start Screen -->
+    <div id="startScreen">
+        <div class="start-content">
+            <h1 class="logo">Vision</h1>
+            <p class="tagline">Real-time video filters inspired by iconic visual styles</p>
+            <button class="start-btn" id="startBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                </svg>
+                Start Camera
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Canvas -->
+    <div id="container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <!-- Filter Bar -->
+    <div id="filterBar">
+        <button class="filter-btn active" data-filter="matrix">
+            <span class="dot"></span>
+            <span>Matrix</span>
+        </button>
+        <button class="filter-btn" data-filter="wakingLife">
+            <span class="dot"></span>
+            <span>Waking Life</span>
+        </button>
+        <button class="filter-btn" data-filter="archer">
+            <span class="dot"></span>
+            <span>Archer</span>
+        </button>
+    </div>
+
+    <!-- Settings Toggle -->
+    <button id="settingsToggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+    </button>
+
+    <!-- Fullscreen Button -->
+    <button id="fullscreenBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+    </button>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <span class="dot" id="panelDot"></span>
+                <span id="panelTitleText">Settings</span>
+            </div>
+            <button class="close-btn" id="closeSettings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="panel-content">
+            <select class="camera-select" id="cameraSelect"></select>
+
+            <!-- Matrix Controls -->
+            <div class="control-section active" id="matrixControls">
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Character Size</span>
+                        <span class="control-value" id="charSizeValue">12px</span>
+                    </div>
+                    <input type="range" id="charSize" min="8" max="24" value="12">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Fall Speed</span>
+                        <span class="control-value" id="fallSpeedValue">5</span>
+                    </div>
+                    <input type="range" id="fallSpeed" min="1" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Brightness</span>
+                        <span class="control-value" id="brightnessValue">6</span>
+                    </div>
+                    <input type="range" id="brightness" min="1" max="10" value="6">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Glitch Rate</span>
+                        <span class="control-value" id="explosionRateValue">3</span>
+                    </div>
+                    <input type="range" id="explosionRate" min="0" max="10" value="3">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Contrast</span>
+                        <span class="control-value" id="contrastValue">7</span>
+                    </div>
+                    <input type="range" id="contrast" min="1" max="10" value="7">
+                </div>
+            </div>
+
+            <!-- Waking Life Controls -->
+            <div class="control-section" id="wakingLifeControls">
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Wobble</span>
+                        <span class="control-value" id="wobbleIntensityValue">5</span>
+                    </div>
+                    <input type="range" id="wobbleIntensity" min="0" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Color Levels</span>
+                        <span class="control-value" id="colorLevelsValue">8</span>
+                    </div>
+                    <input type="range" id="colorLevels" min="4" max="16" value="8">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Edge Strength</span>
+                        <span class="control-value" id="edgeOpacityValue">7</span>
+                    </div>
+                    <input type="range" id="edgeOpacity" min="0" max="10" value="7">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Color Drift</span>
+                        <span class="control-value" id="colorShiftValue">5</span>
+                    </div>
+                    <input type="range" id="colorShift" min="0" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Breathing</span>
+                        <span class="control-value" id="breathingIntensityValue">5</span>
+                    </div>
+                    <input type="range" id="breathingIntensity" min="0" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Painterliness</span>
+                        <span class="control-value" id="painterlynessValue">6</span>
+                    </div>
+                    <input type="range" id="painterliness" min="0" max="10" value="6">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Saturation</span>
+                        <span class="control-value" id="saturationValue">1.3x</span>
+                    </div>
+                    <input type="range" id="saturation" min="5" max="20" value="13">
+                </div>
+            </div>
+
+            <!-- Archer Controls -->
+            <div class="control-section" id="archerControls">
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Edge Thickness</span>
+                        <span class="control-value" id="archerEdgeValue">3</span>
+                    </div>
+                    <input type="range" id="archerEdge" min="1" max="6" value="3">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Color Simplification</span>
+                        <span class="control-value" id="archerColorsValue">6</span>
+                    </div>
+                    <input type="range" id="archerColors" min="3" max="12" value="6">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Shadow Intensity</span>
+                        <span class="control-value" id="archerShadowValue">5</span>
+                    </div>
+                    <input type="range" id="archerShadow" min="0" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Highlight Boost</span>
+                        <span class="control-value" id="archerHighlightValue">5</span>
+                    </div>
+                    <input type="range" id="archerHighlight" min="0" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Saturation</span>
+                        <span class="control-value" id="archerSaturationValue">6</span>
+                    </div>
+                    <input type="range" id="archerSaturation" min="0" max="10" value="6">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="waking-life.js"></script>
+    <script src="archer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
