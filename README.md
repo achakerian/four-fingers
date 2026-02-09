@@ -1,6 +1,18 @@
-# Vision
+# Four Fingers
 
-Real-time video filters inspired by iconic visual styles.
+> "How many do you see?"
+>
+> "Four."
+>
+> "No no no. Look beyond the problem. You're focusing on the problem. Look at me... how many do you see?"
+>
+> "...Eight."
+>
+> *— Arthur Mendelson, Patch Adams (1998)*
+
+See beyond four fingers. See eight. See the Matrix raining down, the rotoscoped edges of a waking dream, the cell-shaded world of a spy's imagination.
+
+**[Try it live](https://achakerian.github.io/four-fingers/)**
 
 ## Filters
 
@@ -10,7 +22,7 @@ Real-time video filters inspired by iconic visual styles.
 
 ## Usage
 
-1. Open `index.html` in a browser (requires local server for camera access)
+1. Open the live site or run locally
 2. Click "Start Camera" and grant permissions
 3. Switch filters using the bottom bar
 4. Adjust settings via the gear icon
