@@ -18,7 +18,7 @@ See beyond four fingers. See eight. See the Matrix raining down, the rotoscoped 
 
 - **Matrix** - Digital rain effect with authentic katakana characters
 - **Waking Life** - Rotoscoped animation with wobbling edges and color drift
-- **Archer** - Cell-shaded look with bold outlines and flat colors
+- **Archer** - Cell-shaded look with bold outlines and flat colors *(needs work)*
 
 ## Usage
 
